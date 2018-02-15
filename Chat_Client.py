@@ -35,27 +35,34 @@ def on_closing(event=None):
     my_msg.set("{quit}")
     send()
 
-top = tkinter.Tk()
-top.title("Chatter")
+#This section creates a GUI using Tkinter module
+root = tkinter.Tk()
+root.title("EE6032 Secure Chat Application")
 
-messages_frame = tkinter.Frame(top)
+top = tkinter.Frame(root)
+top.pack(side=tkinter.TOP)
+bottom = tkinter.Frame(root)
+bottom.pack(side=tkinter.BOTTOM, fill=tkinter.X, expand=1)
+
 my_msg = tkinter.StringVar()  # For the messages to be sent.
 my_msg.set("Type your messages here.")
-scrollbar = tkinter.Scrollbar(messages_frame)  # To navigate through past messages.
+scrollbar = tkinter.Scrollbar(top)  # To navigate through past messages.
 # Following will contain the messages.
-msg_list = tkinter.Listbox(messages_frame, height=15, width=50, yscrollcommand=scrollbar.set)
+msg_list = tkinter.Listbox(top, height=15, width=50, yscrollcommand=scrollbar.set)
 scrollbar.pack(side=tkinter.RIGHT, fill=tkinter.Y)
 msg_list.pack(side=tkinter.LEFT, fill=tkinter.BOTH)
 msg_list.pack()
-messages_frame.pack()
+top.pack()
 
-entry_field = tkinter.Entry(top, textvariable=my_msg)
+entry_frame = tkinter.Frame(bottom, relief=tkinter.RAISED, borderwidth=1)
+entry_field = tkinter.Entry(bottom, textvariable=my_msg)
 entry_field.bind("<Return>", send)
-entry_field.pack(padx=5)
-send_button = tkinter.Button(top, text="Send", command=send)
-send_button.pack(side=tkinter.RIGHT)
+entry_field.pack(side=tkinter.LEFT, ipady=10, padx=10, fill=tkinter.X, expand=1)
+send_button = tkinter.Button(bottom, text="Send", command=send)
+send_button.pack(side=tkinter.RIGHT, ipady=10, ipadx=10, pady=10)
 
-top.protocol("WM_DELETE_WINDOW", on_closing)
+root.geometry("600x500")
+root.protocol("WM_DELETE_WINDOW", on_closing)
 
 #----Now comes the sockets part----
 HOST = input('Enter host: ')
