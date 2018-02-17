@@ -39,22 +39,22 @@ def on_closing(event=None):
 root = tkinter.Tk()
 root.title("EE6032 Secure Chat Application")
 
-top = tkinter.Frame(root)
-top.pack(side=tkinter.TOP)
-bottom = tkinter.Frame(root)
+top = tkinter.Frame(root, relief=tkinter.RAISED, borderwidth=1)
+top.pack(side=tkinter.TOP, fill=tkinter.X, expand=1)
+bottom = tkinter.Frame(root, relief=tkinter.RAISED, borderwidth=1)
 bottom.pack(side=tkinter.BOTTOM, fill=tkinter.X, expand=1)
 
 my_msg = tkinter.StringVar()  # For the messages to be sent.
 my_msg.set("Type your messages here.")
 scrollbar = tkinter.Scrollbar(top)  # To navigate through past messages.
 # Following will contain the messages.
-msg_list = tkinter.Listbox(top, height=15, width=50, yscrollcommand=scrollbar.set)
+msg_list = tkinter.Listbox(top, yscrollcommand=scrollbar.set)
 scrollbar.pack(side=tkinter.RIGHT, fill=tkinter.Y)
 msg_list.pack(side=tkinter.LEFT, fill=tkinter.BOTH)
 msg_list.pack()
 top.pack()
 
-entry_frame = tkinter.Frame(bottom, relief=tkinter.RAISED, borderwidth=1)
+#entry_frame = tkinter.Frame(bottom, relief=tkinter.RAISED, borderwidth=1)
 entry_field = tkinter.Entry(bottom, textvariable=my_msg)
 entry_field.bind("<Return>", send)
 entry_field.pack(side=tkinter.LEFT, ipady=10, padx=10, fill=tkinter.X, expand=1)
