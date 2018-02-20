@@ -35,7 +35,9 @@ def on_closing(event=None):
     my_msg.set("{quit}")
     send()
 
-#This section creates a GUI using Tkinter module
+#This section creates a client facing GUI using Tkinter module
+
+
 root = tkinter.Tk()
 root.title("EE6032 Secure Chat Application")
 
@@ -50,6 +52,7 @@ scrollbar = tkinter.Scrollbar(top)  # To navigate through past messages.
 # Following will contain the messages.
 msg_list = tkinter.Listbox(top, yscrollcommand=scrollbar.set)
 scrollbar.pack(side=tkinter.RIGHT, fill=tkinter.Y)
+scrollbar.config(command=msg_list.yview)
 msg_list.pack(fill=tkinter.BOTH)
 #msg_list.pack()
 top.pack()
