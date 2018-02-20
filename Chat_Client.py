@@ -50,16 +50,21 @@ scrollbar = tkinter.Scrollbar(top)  # To navigate through past messages.
 # Following will contain the messages.
 msg_list = tkinter.Listbox(top, yscrollcommand=scrollbar.set)
 scrollbar.pack(side=tkinter.RIGHT, fill=tkinter.Y)
-msg_list.pack(side=tkinter.LEFT, fill=tkinter.BOTH)
-msg_list.pack()
+msg_list.pack(fill=tkinter.BOTH)
+#msg_list.pack()
 top.pack()
 
 #entry_frame = tkinter.Frame(bottom, relief=tkinter.RAISED, borderwidth=1)
 entry_field = tkinter.Entry(bottom, textvariable=my_msg)
 entry_field.bind("<Return>", send)
 entry_field.pack(side=tkinter.LEFT, ipady=10, padx=10, fill=tkinter.X, expand=1)
+
+encrypt_var=''
+encrypt_button = tkinter.Checkbutton(bottom, text="Encrpyt", variable=encrypt_var)
+encrypt_button.pack(side=tkinter.LEFT, ipady=10, ipadx=10, pady=10, padx=10)
+
 send_button = tkinter.Button(bottom, text="Send", command=send)
-send_button.pack(side=tkinter.RIGHT, ipady=10, ipadx=10, pady=10)
+send_button.pack(side=tkinter.LEFT, ipady=10, ipadx=10, pady=10)
 
 root.geometry("600x500")
 root.protocol("WM_DELETE_WINDOW", on_closing)
