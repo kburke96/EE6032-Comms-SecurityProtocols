@@ -3,18 +3,18 @@ Created on 15 Feb 2018
 
 @author: Kevin
 '''
+from tkinter import BooleanVar
 
 """Script for Tkinter GUI chat client."""
 from socket import AF_INET, socket, SOCK_STREAM
 from threading import Thread
 import tkinter
 
-
 def receive():
     """Handles receiving of messages."""
     while True:
         try:
-            msg = client_socket.recv(BUFSIZ).decode("utf8")
+            msg = client_socket.recv(BUFSIZ)#.decode("utf8")
             msg_list.insert(tkinter.END, msg)
         except OSError:  # Possibly client has left the chat.
             break
@@ -27,50 +27,79 @@ def send(event=None):  # event is passed by binders.
     client_socket.send(bytes(msg, "utf8"))
     if msg == "{quit}":
         client_socket.close()
-        top.quit()
-
+        msg_frame.quit()
 
 def on_closing(event=None):
     """This function is to be called when the window is closed."""
     my_msg.set("{quit}")
     send()
 
+def cb():
+    if encrypt_var.get() == 1:
+        msg = "ENCRYPTION NOW ENABLED"
+        my_msg.set("")  # Clears input field.
+        client_socket.send(bytes(msg, "utf8"))
+        #msg_list.insert(tkinter.END, "ENCRYPTION NOW ENABLED")
+    elif encrypt_var.get() == 0:
+        msg = "ENCRYPTION NOW DISABLED"
+        my_msg.set("")  # Clears input field.
+        client_socket.send(bytes(msg, "utf8"))  
+        #msg_list.insert(tkinter.END, "ENCRYPTION NOW DISABLED")
+
 #This section creates a client facing GUI using Tkinter module
 
-
-root = tkinter.Tk()
+root=tkinter.Tk()
 root.title("EE6032 Secure Chat Application")
+#root.resizable(0,0)
+root.geometry("600x500")
+root.protocol("WM_DELETE_WINDOW", on_closing)
 
-top = tkinter.Frame(root, relief=tkinter.RAISED, borderwidth=1)
-top.pack(side=tkinter.TOP, fill=tkinter.X, expand=1)
-bottom = tkinter.Frame(root, relief=tkinter.RAISED, borderwidth=1)
-bottom.pack(side=tkinter.BOTTOM, fill=tkinter.X, expand=1)
+'''
+config_frame = tkinter.Frame(root, relief=tkinter.GROOVE, borderwidth=3)
+config_frame.pack(side=tkinter.TOP, fill=tkinter.BOTH, expand=1)
+tkinter.Label(config_frame, text="Your IP Address", relief=tkinter.GROOVE, width=25).grid(row=1,column=1)
+tkinter.Label(config_frame, text="Status", relief=tkinter.GROOVE, width=25).grid(row=2,column=1)
+tkinter.Label(config_frame, text="Port Number", relief=tkinter.GROOVE, width=25).grid(row=3,column=1)
+#tkinter.Label(config_frame, textvariable=socket.gethostbyname(socket.gethostname()), relief=tkinter.GROOVE, width=25).grid(row=1,column=2)
+'''
+
+#Create the message frame, which holds the previous messages exchanged
+msg_frame = tkinter.Frame(root, relief=tkinter.GROOVE, borderwidth=3)
+msg_frame.pack(side=tkinter.TOP, fill=tkinter.BOTH, expand=1)
+msg_frame.pack(padx=10, pady=10)
+msg_frame.pack()
+
+# Create the text frame, which holds the message entry, encrypt checkbox
+# and Send button 
+txt_frame = tkinter.Frame(root, relief=tkinter.GROOVE, borderwidth=1)
+txt_frame.pack(side=tkinter.BOTTOM, fill=tkinter.X, expand=1)
+txt_frame.pack(padx=10, pady=0)
+txt_frame.pack()
 
 my_msg = tkinter.StringVar()  # For the messages to be sent.
 my_msg.set("Type your messages here.")
-scrollbar = tkinter.Scrollbar(top)  # To navigate through past messages.
+scrollbar = tkinter.Scrollbar(msg_frame)  # To navigate through past messages.
 # Following will contain the messages.
-msg_list = tkinter.Listbox(top, yscrollcommand=scrollbar.set)
+msg_list = tkinter.Listbox(msg_frame, yscrollcommand=scrollbar.set)
 scrollbar.pack(side=tkinter.RIGHT, fill=tkinter.Y)
 scrollbar.config(command=msg_list.yview)
-msg_list.pack(fill=tkinter.BOTH)
-#msg_list.pack()
-top.pack()
+msg_list.pack(side=tkinter.BOTTOM, fill=tkinter.BOTH, pady=5, padx=5, expand=1)
+msg_list.pack()
+msg_frame.pack()
 
 #entry_frame = tkinter.Frame(bottom, relief=tkinter.RAISED, borderwidth=1)
-entry_field = tkinter.Entry(bottom, textvariable=my_msg)
+entry_field = tkinter.Entry(txt_frame, textvariable=my_msg)
 entry_field.bind("<Return>", send)
 entry_field.pack(side=tkinter.LEFT, ipady=10, padx=10, fill=tkinter.X, expand=1)
 
-encrypt_var=''
-encrypt_button = tkinter.Checkbutton(bottom, text="Encrpyt", variable=encrypt_var)
+encrypt_var= tkinter.IntVar()
+encrypt_button = tkinter.Checkbutton(txt_frame, text="Encrypt", variable=encrypt_var, onvalue=1, offvalue=0, command=cb)
 encrypt_button.pack(side=tkinter.LEFT, ipady=10, ipadx=10, pady=10, padx=10)
 
-send_button = tkinter.Button(bottom, text="Send", command=send)
-send_button.pack(side=tkinter.LEFT, ipady=10, ipadx=10, pady=10)
 
-root.geometry("600x500")
-root.protocol("WM_DELETE_WINDOW", on_closing)
+send_button = tkinter.Button(txt_frame, text="Send", command=send, bg='#128C7E')
+send_button.pack(side=tkinter.LEFT, ipady=10, ipadx=10, pady=10, padx=5)
+
 
 #----Now comes the sockets part----
 HOST = input('Enter host: ')
