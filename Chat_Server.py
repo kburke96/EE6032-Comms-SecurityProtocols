@@ -15,7 +15,7 @@ def accept_incoming_connections():
     while True:
         client, client_address = SERVER.accept()
         print("%s:%s has connected." % client_address)
-        client.send(bytes("Greetings from the cave! Now type your name and press enter!", "utf8"))
+        client.send(bytes("Please type your name and press enter!", "utf8"))
         addresses[client] = client_address
         Thread(target=handle_client, args=(client,)).start()
 
@@ -47,6 +47,7 @@ def broadcast(msg, prefix=""):  # prefix is for name identification.
 
     for sock in clients:
         sock.send(bytes(prefix, "utf8")+msg)
+        
 
         
 clients = {}
@@ -55,15 +56,16 @@ addresses = {}
 HOST = ''
 PORT = 33000
 BUFSIZ = 1024
-ADDR = (HOST, PORT)
+ADDR = (HOST, PORT)                     #Create a tuple of host and port to run server on
 
-SERVER = socket(AF_INET, SOCK_STREAM)
-SERVER.bind(ADDR)
+SERVER = socket(AF_INET, SOCK_STREAM)   #Create a new server socket
+SERVER.bind(ADDR)                       #Bind the new server socket to defined host and port tuple
 
 if __name__ == "__main__":
-    SERVER.listen(5)
+    SERVER.listen(5)                    #Server will accept up to 5 connections
     print("Waiting for connection...")
     ACCEPT_THREAD = Thread(target=accept_incoming_connections)
-    ACCEPT_THREAD.start()
-    ACCEPT_THREAD.join()
-    SERVER.close()
+                                        #Create a new thread and run the function to accept clients
+    ACCEPT_THREAD.start()               #Start the new thread
+    ACCEPT_THREAD.join()                #Block operation until thread terminates
+    SERVER.close()                      #Close the server socket 
