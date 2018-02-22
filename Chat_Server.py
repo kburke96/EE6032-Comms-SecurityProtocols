@@ -1,6 +1,5 @@
 '''
 Created on 15 Feb 2018
-
 @author: Kevin
 '''
 
@@ -47,7 +46,7 @@ def handle_client(client):  # Takes client socket as argument.
             #print("isFile value: ", isFile)
             
         if b"This is the end of the file" in msg:
-            broadcast(msg, "")
+            #broadcast(msg, "")
             isFile = False
             #print("isFile value: ", isFile)
         
@@ -55,7 +54,7 @@ def handle_client(client):  # Takes client socket as argument.
             broadcast(msg, "")
         else:
             if msg != bytes("{quit}", "utf8"):
-                print("isFile value: ", isFile)
+                #print("isFile value: ", isFile)
                 broadcast(msg, name+": ")
             else:
                 client.send(bytes("{quit}", "utf8"))
@@ -91,4 +90,4 @@ if __name__ == "__main__":
                                         #Create a new thread and run the function to accept clients
     ACCEPT_THREAD.start()               #Start the new thread
     ACCEPT_THREAD.join()                #Block operation until thread terminates
-    SERVER.close()                      #Close the server socket 
+SERVER.close() #Close the server socket
