@@ -39,6 +39,11 @@ def receive():
                         #print('receiving data...')
                         data = client_socket.recv(BUFSIZ)
                         #print('data=%s', (data))
+                        if b"This is the end of the file" in data:
+                            realdata, EndOfFile = data.split(b"This is the end of the file", 1)
+                            f.write(realdata)
+                            f.close()
+                            break
                         if not data:
                             f.close()
                             print('file close()')
@@ -47,6 +52,7 @@ def receive():
                         f.write(data)
              
             msg_list.insert(tkinter.END, msg)
+            '''
             if msg.startswith(b"."):
                 msg_list.insert(tkinter.END, "If loop is successful")
                 with open('received_file', 'wb') as f:
@@ -61,6 +67,7 @@ def receive():
                             break
                         # write data to a file
                         f.write(data)
+            '''
         except OSError:  # Possibly client has left the chat.
             break
   
@@ -85,6 +92,8 @@ def send(event=None):  # event is passed by binders.
                     ##print('Sent ',l)
                     l = f.read(BUFSIZ)
                     if not l:
+                        #Test to see if it puts this at the end of the file
+                        client_socket.send(b"This is the end of the file")
                         f.close()
                         break
         except IOError:
