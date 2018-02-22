@@ -47,7 +47,7 @@ def handle_client(client):  # Takes client socket as argument.
             #print("isFile value: ", isFile)
             
         if b"This is the end of the file" in msg:
-            broadcast(msg, "")
+            #broadcast(msg, "")
             isFile = False
             #print("isFile value: ", isFile)
         
@@ -55,7 +55,7 @@ def handle_client(client):  # Takes client socket as argument.
             broadcast(msg, "")
         else:
             if msg != bytes("{quit}", "utf8"):
-                print("isFile value: ", isFile)
+                #print("isFile value: ", isFile)
                 broadcast(msg, name+": ")
             else:
                 client.send(bytes("{quit}", "utf8"))
