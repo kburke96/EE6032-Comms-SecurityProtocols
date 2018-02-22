@@ -29,17 +29,40 @@ def handle_client(client):  # Takes client socket as argument.
     msg = "%s has joined the chat!" % name
     broadcast(bytes(msg, "utf8"))
     clients[client] = name
-
+    isFile=False
     while True:
         msg = client.recv(BUFSIZ)
-        if msg != bytes("{quit}", "utf8"):
-            broadcast(msg, name+": ")
+        
+        ##need something here which will identify if the message to be broadcast
+        ##is a file.
+        ##possible to set a variable (boolean) which identifies if its a file
+        ##so if it contains "this is start of file" -> isFile = True
+        ##and if it contains "this is end of file" -> isFile=False
+        ##then if isFile==True, dont broadcast prefix
+        ##else do broadcast prefix 
+        ##If yes, don't broadcast the name as the prefix, leave blank
+        ##otherwise continue as normal.
+        if b"This is the start of the file" in msg:
+            isFile = True
+            #print("isFile value: ", isFile)
+            
+        if b"This is the end of the file" in msg:
+            broadcast(msg, "")
+            isFile = False
+            #print("isFile value: ", isFile)
+        
+        if isFile:
+            broadcast(msg, "")
         else:
-            client.send(bytes("{quit}", "utf8"))
-            client.close()
-            del clients[client]
-            broadcast(bytes("%s has left the chat." % name, "utf8"))
-            break
+            if msg != bytes("{quit}", "utf8"):
+                print("isFile value: ", isFile)
+                broadcast(msg, name+": ")
+            else:
+                client.send(bytes("{quit}", "utf8"))
+                client.close()
+                del clients[client]
+                broadcast(bytes("%s has left the chat." % name, "utf8"))
+                break
 
 
 def broadcast(msg, prefix=""):  # prefix is for name identification.

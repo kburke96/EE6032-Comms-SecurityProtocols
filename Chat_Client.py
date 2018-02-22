@@ -38,6 +38,9 @@ def receive():
                     while True:
                         #print('receiving data...')
                         data = client_socket.recv(BUFSIZ)
+                        if b"This is the start of the file" in data:
+                            startofFile, startdata = data.split(b"This is the start of the file", 1)
+                            f.write(startdata)
                         #print('data=%s', (data))
                         if b"This is the end of the file" in data:
                             realdata, EndOfFile = data.split(b"This is the end of the file", 1)
@@ -85,9 +88,10 @@ def send(event=None):  # event is passed by binders.
         sign, path = msg.split(".", 1)
         try:
             f = open(path,'rb')
+            client_socket.send(b"This is the start of the file")
             while True:
                 l = f.read(BUFSIZ)
-                while (l):
+                while (l):                  
                     client_socket.send(l)
                     ##print('Sent ',l)
                     l = f.read(BUFSIZ)
