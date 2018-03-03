@@ -1,6 +1,5 @@
 '''
 Created on 15 Feb 2018
-
 @author: Kevin
 '''
 
@@ -47,16 +46,23 @@ def handle_client(client):  # Takes client socket as argument.
             #print("isFile value: ", isFile)
             
         if b"This is the end of the file" in msg:
-            #broadcast(msg, "")
+            broadcast(msg, "")
             isFile = False
+            #break
+        #the break statement is required so that the last line gets written to the file
+        #and not the listbox
+        #without out, the chat gets stuck after sending a file. No msgs go to the listbox
             #print("isFile value: ", isFile)
         
         if isFile:
             broadcast(msg, "")
         else:
-            if msg != bytes("{quit}", "utf8"):
-                #print("isFile value: ", isFile)
+            if (isFile==False) and (msg != bytes("{quit}", "utf8")):
                 broadcast(msg, name+": ")
+            ##else:
+            ##   if msg != bytes("{quit}", "utf8"):
+                #print("isFile value: ", isFile)
+            ##        broadcast(msg, name+": ")
             else:
                 client.send(bytes("{quit}", "utf8"))
                 client.close()
@@ -91,4 +97,4 @@ if __name__ == "__main__":
                                         #Create a new thread and run the function to accept clients
     ACCEPT_THREAD.start()               #Start the new thread
     ACCEPT_THREAD.join()                #Block operation until thread terminates
-    SERVER.close()                      #Close the server socket 
+SERVER.close() #Close the server socket

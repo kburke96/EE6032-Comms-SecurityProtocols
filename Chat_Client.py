@@ -3,14 +3,15 @@ Created on 15 Feb 2018
   
 @author: Kevin
 '''
- 
- 
-  
+
 """Script for Tkinter GUI chat client."""
 from socket import AF_INET, socket, SOCK_STREAM
 from threading import Thread
 import tkinter
 import sys
+from tkinter.filedialog import askopenfilename
+
+fileToSend=''
   
 def receive():
     """Handles receiving of messages."""
@@ -24,15 +25,15 @@ def receive():
             ##if yes, do all the stuff below
             ##if no, put the client and msg parts back together and insert
             clientname, message = msg.split(b" ", 1)
-            
+            path = bytes(fileToSend, "utf8")
             ##need to identify some kind of end of file operator and stop
             ##writing to file when this is seen by the receeive() method.
             
             ##also need to remove client name from the start of every message
             ##this is what is corrupting the image
              
-            if message.startswith(b"."):
-                ##msg_list.insert(tkinter.END, "TST MESSAGE")
+            if message.startswith(b"C:/"):
+                #msg_list.insert(tkinter.END, "TST MESSAGE")
                 with open('received_file', 'wb') as f:
                     print('file opened')
                     while True:
@@ -40,19 +41,19 @@ def receive():
                         data = client_socket.recv(BUFSIZ)
                         if b"This is the start of the file" in data:
                             startofFile, startdata = data.split(b"This is the start of the file", 1)
-                            f.write(startdata)
-                        #print('data=%s', (data))
-                        if b"This is the end of the file" in data:
+                            f.write(startdata)                        #print('data=%s', (data))
+                        elif b"This is the end of the file" in data:
                             realdata, EndOfFile = data.split(b"This is the end of the file", 1)
                             f.write(realdata)
                             f.close()
                             break
-                        if not data:
+                        elif not data:
                             f.close()
                             print('file close()')
                             break
                         # write data to a file
-                        f.write(data)
+                        else:
+                            f.write(data)
              
             msg_list.insert(tkinter.END, msg)
             '''
@@ -84,8 +85,9 @@ def send(event=None):  # event is passed by binders.
         client_socket.close()
         msg_frame.quit()
       
-    if msg.startswith("."):
-        sign, path = msg.split(".", 1)
+    if msg.startswith('C:/'):
+        #sign, path = msg.split(".", 1)
+        path = msg
         try:
             f = open(path,'rb')
             client_socket.send(b"This is the start of the file")
@@ -103,13 +105,30 @@ def send(event=None):  # event is passed by binders.
         except IOError:
             msg="No such file or directory"
             msg_list.insert(tkinter.END, msg)
-  
+
+    
+            
 def on_closing(event=None):
     """This function is to be called when the window is closed."""
     my_msg.set("{quit}")
     send()
     root.destroy()
     sys.exit()
+
+
+#This is where we lauch the file manager bar.
+def OpenFile():
+    name = askopenfilename(initialdir="C:/Users",
+                           filetypes =(("JPEG", "*.JPG"),("All Files","*.*")),
+                           title = "Choose an attachment"
+                           )
+    #print (name)
+    #Using try in case user types in unknown file or closes without choosing a file.
+    try:
+        fileToSend = name
+        my_msg.set(fileToSend)
+    except:
+        print("No file exists")
   
 #This section creates a client facing GUI using Tkinter module
   
@@ -133,7 +152,7 @@ msg_frame = tkinter.Frame(root, relief=tkinter.GROOVE, borderwidth=3)
 msg_frame.pack(side=tkinter.TOP, fill=tkinter.BOTH, expand=1)
 msg_frame.pack(padx=10, pady=10)
 msg_frame.pack()
-  
+
 # Create the text frame, which holds the message entry, encrypt checkbox
 # and Send button 
 txt_frame = tkinter.Frame(root, relief=tkinter.GROOVE, borderwidth=1)
@@ -161,10 +180,12 @@ entry_field.bind("<Return>", send)
 entry_field.pack(side=tkinter.LEFT, ipady=10, padx=10, fill=tkinter.X, expand=1)
   
 encrypt_var=''
-encrypt_button = tkinter.Checkbutton(txt_frame, text="Encrpyt", variable=encrypt_var)
+encrypt_button = tkinter.Checkbutton(txt_frame, text="Encrypt", variable=encrypt_var)
 encrypt_button.pack(side=tkinter.LEFT, ipady=10, ipadx=10, pady=10, padx=10)
   
-  
+addButton = tkinter.Button(txt_frame, text="Add File", command=OpenFile)
+addButton.pack(side=tkinter.LEFT, ipady=10, ipadx=10, pady=10, padx=5)
+
 send_button = tkinter.Button(txt_frame, text="Send", command=send, bg='#128C7E')
 send_button.pack(side=tkinter.LEFT, ipady=10, ipadx=10, pady=10, padx=5)
   
@@ -185,4 +206,4 @@ client_socket.connect(ADDR)
   
 receive_thread = Thread(target=receive)
 receive_thread.start()
-tkinter.mainloop()  # Starts GUI execution.
+tkinter.mainloop() # Starts GUI execution.
