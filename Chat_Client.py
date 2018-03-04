@@ -12,36 +12,41 @@ import sys
 from tkinter.filedialog import askopenfilename
 
 fileToSend=''
-  
+
+
+'''
+receive() handles the receiving of messages on server-->client socket
+
+operation:
+            reads 1024 bytes at a time from the socket connected to the server
+            splits each message away from the attached client name
+            check each message to see if it starts with a file location
+            if it does, open a new file and write contents to it
+            else, write the message to the chat box in the GUI
+'''
 def receive():
-    """Handles receiving of messages."""
     while True:
         try:
             msg = client_socket.recv(BUFSIZ)#.decode("utf8")
              
-            ##might need some kind of parsing around here?
-            ##split the message away from the client name
-            ##then check if the message starts with "."
-            ##if yes, do all the stuff below
-            ##if no, put the client and msg parts back together and insert
+            '''parse each read from buffer to split message and client name'''
             clientname, message = msg.split(b" ", 1)
-            path = bytes(fileToSend, "utf8")
-            ##need to identify some kind of end of file operator and stop
-            ##writing to file when this is seen by the receeive() method.
+
             
-            ##also need to remove client name from the start of every message
-            ##this is what is corrupting the image
-             
             if message.startswith(b"C:/"):
-                #msg_list.insert(tkinter.END, "TST MESSAGE")
                 with open('received_file', 'wb') as f:
                     print('file opened')
                     while True:
-                        #print('receiving data...')
                         data = client_socket.recv(BUFSIZ)
+                        '''
+                        need to check whether the designated start and end of file placeholders
+                        are present.
+                        If so, they need to be removed before the data is written 
+                        to the file
+                        '''
                         if b"This is the start of the file" in data:
                             startofFile, startdata = data.split(b"This is the start of the file", 1)
-                            f.write(startdata)                        #print('data=%s', (data))
+                            f.write(startdata)
                         elif b"This is the end of the file" in data:
                             realdata, EndOfFile = data.split(b"This is the end of the file", 1)
                             f.write(realdata)
@@ -51,33 +56,32 @@ def receive():
                             f.close()
                             print('file close()')
                             break
-                        # write data to a file
                         else:
                             f.write(data)
              
             msg_list.insert(tkinter.END, msg)
-            '''
-            if msg.startswith(b"."):
-                msg_list.insert(tkinter.END, "If loop is successful")
-                with open('received_file', 'wb') as f:
-                    print('file opened')
-                    while True:
-                        #print('receiving data...')
-                        data = client_socket.recv(BUFSIZ)
-                        #print('data=%s', (data))
-                        if not data:
-                            f.close()
-                            print('file close()')
-                            break
-                        # write data to a file
-                        f.write(data)
-            '''
+
         except OSError:  # Possibly client has left the chat.
             break
-  
-  
+
+
+
+'''
+send() handles sending of messages on client-->server socket
+
+operation:
+            fetches messages from input box and clears input box.
+            sends message to server through socket
+            checks if message is {quit}, which allows user to leave the chat
+            checks if message starts with file location, if yes, it attempts
+            to open the specified file.
+            Contents are sent via socket to the server
+            
+            File contents are prepended with "This is the start of the file"
+            and appended with "This is the end of the file" in order to act as
+            beginning and ending markers.
+'''  
 def send(event=None):  # event is passed by binders.
-    """Handles sending of messages."""
     msg = my_msg.get()
     my_msg.set("")  # Clears input field.
     client_socket.send(bytes(msg, "utf8"))
@@ -86,7 +90,6 @@ def send(event=None):  # event is passed by binders.
         msg_frame.quit()
       
     if msg.startswith('C:/'):
-        #sign, path = msg.split(".", 1)
         path = msg
         try:
             f = open(path,'rb')
@@ -95,10 +98,8 @@ def send(event=None):  # event is passed by binders.
                 l = f.read(BUFSIZ)
                 while (l):                  
                     client_socket.send(l)
-                    ##print('Sent ',l)
                     l = f.read(BUFSIZ)
                     if not l:
-                        #Test to see if it puts this at the end of the file
                         client_socket.send(b"This is the end of the file")
                         f.close()
                         break
@@ -116,29 +117,29 @@ def on_closing(event=None):
     sys.exit()
 
 
-#This is where we lauch the file manager bar.
+''' This is where we lauch the file manager bar. '''
 def OpenFile():
     name = askopenfilename(initialdir="C:/Users",
                            filetypes =(("JPEG", "*.JPG"),("All Files","*.*")),
                            title = "Choose an attachment"
                            )
-    #print (name)
     #Using try in case user types in unknown file or closes without choosing a file.
     try:
         fileToSend = name
         my_msg.set(fileToSend)
     except:
         print("No file exists")
-  
-#This section creates a client facing GUI using Tkinter module
-  
+
+
+
+''' Create tkinter root which will hold the GUI frames and components '''  
 root=tkinter.Tk()
 root.title("EE6032 Secure Chat Application")
-#root.resizable(0,0)
 root.geometry("600x500")
 root.protocol("WM_DELETE_WINDOW", on_closing)
   
 '''
+**THIS SECTION CAN POSSIBLY BE IMPLEMENTED AT A LATER STAGE**
 config_frame = tkinter.Frame(root, relief=tkinter.GROOVE, borderwidth=3)
 config_frame.pack(side=tkinter.TOP, fill=tkinter.BOTH, expand=1)
 tkinter.Label(config_frame, text="Your IP Address", relief=tkinter.GROOVE, width=25).grid(row=1,column=1)
@@ -147,45 +148,58 @@ tkinter.Label(config_frame, text="Port Number", relief=tkinter.GROOVE, width=25)
 #tkinter.Label(config_frame, textvariable=socket.gethostbyname(socket.gethostname()), relief=tkinter.GROOVE, width=25).grid(row=1,column=2)
 '''
   
-#Create the message frame, which holds the previous messages exchanged
+''' Create the message frame, which holds the list box of previous messages exchanged '''
 msg_frame = tkinter.Frame(root, relief=tkinter.GROOVE, borderwidth=3)
 msg_frame.pack(side=tkinter.TOP, fill=tkinter.BOTH, expand=1)
 msg_frame.pack(padx=10, pady=10)
 msg_frame.pack()
 
-# Create the text frame, which holds the message entry, encrypt checkbox
-# and Send button 
+''' Create the text frame, which holds the message entry, encrypt checkbox
+    and Send button '''
 txt_frame = tkinter.Frame(root, relief=tkinter.GROOVE, borderwidth=1)
 txt_frame.pack(side=tkinter.BOTTOM, fill=tkinter.X, expand=1)
 txt_frame.pack(padx=10, pady=0)
 txt_frame.pack()
-  
+
 my_msg = tkinter.StringVar()  # For the messages to be sent.
 my_msg.set("Type your messages here.")
+
+''' X and Y Scrollbars config for the msg_frame '''
 scrollbar = tkinter.Scrollbar(msg_frame)  # To navigate through past messages.
 scrollbar2 = tkinter.Scrollbar(msg_frame, orient=tkinter.HORIZONTAL)
-# Following will contain the messages.
+
+''' This listbox will contain the chat history, previous messages, files
+    sent etc.  '''
 msg_list = tkinter.Listbox(msg_frame, yscrollcommand=scrollbar.set, xscrollcommand=scrollbar2.set)
+
+''' More scrollbar config '''
 scrollbar.pack(side=tkinter.RIGHT, fill=tkinter.Y)
 scrollbar.config(command=msg_list.yview)
 scrollbar2.pack(side=tkinter.BOTTOM, fill=tkinter.X)
 scrollbar2.config(command=msg_list.xview)
+
 msg_list.pack(side=tkinter.BOTTOM, fill=tkinter.BOTH, pady=5, padx=5, expand=1)
 msg_list.pack()
 msg_frame.pack()
   
-#entry_frame = tkinter.Frame(bottom, relief=tkinter.RAISED, borderwidth=1)
+''' Entry field for inputting messages, variable gets read by send()
+    Bind function attaches functionality for send() to be called when the
+    return button is pressed   '''
 entry_field = tkinter.Entry(txt_frame, textvariable=my_msg)
 entry_field.bind("<Return>", send)
 entry_field.pack(side=tkinter.LEFT, ipady=10, padx=10, fill=tkinter.X, expand=1)
-  
+
+''' Checkbox which turns encryption on and off. '''
 encrypt_var=''
 encrypt_button = tkinter.Checkbutton(txt_frame, text="Encrypt", variable=encrypt_var)
 encrypt_button.pack(side=tkinter.LEFT, ipady=10, ipadx=10, pady=10, padx=10)
-  
+
+''' Simple button to add file. Calls OpenFile() which allows user to browse
+    and select a file to send   '''
 addButton = tkinter.Button(txt_frame, text="Add File", command=OpenFile)
 addButton.pack(side=tkinter.LEFT, ipady=10, ipadx=10, pady=10, padx=5)
 
+''' Send button which calls send() function  '''
 send_button = tkinter.Button(txt_frame, text="Send", command=send, bg='#128C7E')
 send_button.pack(side=tkinter.LEFT, ipady=10, ipadx=10, pady=10, padx=5)
   
@@ -197,13 +211,19 @@ if not PORT:
     PORT = 33000
 else:
     PORT = int(PORT)
-  
+
+''' Standard Buffer Size of 1024 bytes for reading '''
 BUFSIZ = 1024
+''' Create a tuple of user inputted host and post '''
 ADDR = (HOST, PORT)
-  
+
+''' Create a new socket on the specified host and port and connect '''
 client_socket = socket(AF_INET, SOCK_STREAM)
 client_socket.connect(ADDR)
-  
+
+''' Begin a new thread for this specific client '''
 receive_thread = Thread(target=receive)
 receive_thread.start()
-tkinter.mainloop() # Starts GUI execution.
+
+''' This line starts up the tkinter GUI execution '''
+tkinter.mainloop() 
