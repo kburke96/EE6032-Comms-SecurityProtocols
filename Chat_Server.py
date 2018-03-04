@@ -9,8 +9,19 @@ from socket import AF_INET, socket, SOCK_STREAM
 from threading import Thread
 
 
+
+'''
+accept_incoming_connection() sets up handling for incoming clients
+
+inputs:
+    none
+    
+operation:
+    accepts the clients requesting to connect via the server socket
+    gets client name, adds to array of clients and starts a new thread,
+    Threads then runs the handle_client() method
+'''
 def accept_incoming_connections():
-    """Sets up handling for incoming clients."""
     while True:
         client, client_address = SERVER.accept()
         print("%s:%s has connected." % client_address)
@@ -19,9 +30,25 @@ def accept_incoming_connections():
         Thread(target=handle_client, args=(client,)).start()
 
 
-def handle_client(client):  # Takes client socket as argument.
-    """Handles a single client connection."""
 
+'''
+handle_client() takes care of each individual client connections
+
+arguments:
+    client  - The single client socket to be handled
+
+operation:
+    General client setup tasks, inserts client name into chat.
+    Handles the receiving of messages on client-->server socket and the
+    distribution of the message to all connected clients on the server--> client
+    sockets
+    
+    Also checks for the start and end of file markers. These trigger isFile 
+    variable. If true, the message is broadcast without the client name prepended,
+    else the client name is appended to the message and subsequently added to
+    the chat history (this is done in receive() in Chat_Client.py)
+'''
+def handle_client(client): 
     name = client.recv(BUFSIZ).decode("utf8")
     welcome = 'Welcome %s! If you ever want to quit, type {quit} to exit.' % name
     client.send(bytes(welcome, "utf8"))
@@ -32,48 +59,38 @@ def handle_client(client):  # Takes client socket as argument.
     while True:
         msg = client.recv(BUFSIZ)
         
-        ##need something here which will identify if the message to be broadcast
-        ##is a file.
-        ##possible to set a variable (boolean) which identifies if its a file
-        ##so if it contains "this is start of file" -> isFile = True
-        ##and if it contains "this is end of file" -> isFile=False
-        ##then if isFile==True, dont broadcast prefix
-        ##else do broadcast prefix 
-        ##If yes, don't broadcast the name as the prefix, leave blank
-        ##otherwise continue as normal.
         if b"This is the start of the file" in msg:
             isFile = True
-            #print("isFile value: ", isFile)
             
         if b"This is the end of the file" in msg:
-            broadcast(msg, "")
+            #broadcast(msg, "")              #Message broadcast w/o Client Name
             isFile = False
             #break
-        #the break statement is required so that the last line gets written to the file
-        #and not the listbox
-        #without out, the chat gets stuck after sending a file. No msgs go to the listbox
-            #print("isFile value: ", isFile)
-        
+
         if isFile:
-            broadcast(msg, "")
+            broadcast(msg, "")              #Message broadcast w/o Client Name
         else:
             if (isFile==False) and (msg != bytes("{quit}", "utf8")):
-                broadcast(msg, name+": ")
-            ##else:
-            ##   if msg != bytes("{quit}", "utf8"):
-                #print("isFile value: ", isFile)
-            ##        broadcast(msg, name+": ")
-            else:
-                client.send(bytes("{quit}", "utf8"))
+                broadcast(msg, name+": ")   #Message broadcast w/ Client Name
+            elif msg==bytes("{quit}", "utf8"):
                 client.close()
                 del clients[client]
                 broadcast(bytes("%s has left the chat." % name, "utf8"))
                 break
+            else:
+                break
 
 
-def broadcast(msg, prefix=""):  # prefix is for name identification.
-    """Broadcasts a message to all the clients."""
 
+'''
+broadcast() sends a message from server-->client sockets
+
+arguments:
+    msg    - The message to be sent out to clients
+    
+    prefix - Client Name to be prepended to msg
+'''
+def broadcast(msg, prefix=""):
     for sock in clients:
         sock.send(bytes(prefix, "utf8")+msg)
         

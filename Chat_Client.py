@@ -16,7 +16,6 @@ fileToSend=''
 
 '''
 receive() handles the receiving of messages on server-->client socket
-
 operation:
             reads 1024 bytes at a time from the socket connected to the server
             splits each message away from the attached client name
@@ -31,10 +30,12 @@ def receive():
              
             '''parse each read from buffer to split message and client name'''
             clientname, message = msg.split(b" ", 1)
-
+            #filepath=''
             
             if message.startswith(b"C:/"):
-                with open('received_file', 'wb') as f:
+                ''' parse the message to get the file extension '''
+                filepath, extension = message.split(b".")
+                with open('received_file.' + str(extension, 'utf8'), 'wb') as f:
                     print('file opened')
                     while True:
                         data = client_socket.recv(BUFSIZ)
@@ -68,7 +69,6 @@ def receive():
 
 '''
 send() handles sending of messages on client-->server socket
-
 operation:
             fetches messages from input box and clears input box.
             sends message to server through socket
@@ -226,4 +226,4 @@ receive_thread = Thread(target=receive)
 receive_thread.start()
 
 ''' This line starts up the tkinter GUI execution '''
-tkinter.mainloop() 
+tkinter.mainloop()
