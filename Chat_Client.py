@@ -10,6 +10,8 @@ from threading import Thread
 import tkinter
 import sys
 from tkinter.filedialog import askopenfilename
+from Crypto.Cipher import AES
+import os
 
 fileToSend=''
 
@@ -96,7 +98,7 @@ def send(event=None):  # event is passed by binders.
             client_socket.send(b"This is the start of the file")
             while True:
                 l = f.read(BUFSIZ)
-                while (l):                  
+                while (l):
                     client_socket.send(l)
                     l = f.read(BUFSIZ)
                     if not l:
@@ -190,7 +192,7 @@ entry_field.bind("<Return>", send)
 entry_field.pack(side=tkinter.LEFT, ipady=10, padx=10, fill=tkinter.X, expand=1)
 
 ''' Checkbox which turns encryption on and off. '''
-encrypt_var=''
+encrypt_var= tkinter.IntVar()
 encrypt_button = tkinter.Checkbutton(txt_frame, text="Encrypt", variable=encrypt_var)
 encrypt_button.pack(side=tkinter.LEFT, ipady=10, ipadx=10, pady=10, padx=10)
 
