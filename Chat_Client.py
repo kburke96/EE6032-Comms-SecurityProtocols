@@ -10,8 +10,9 @@ from threading import Thread
 import tkinter
 import sys
 from tkinter.filedialog import askopenfilename
-from Crypto.Cipher import AES
+from Crypto.Cipher import AES, PKCS1_OAEP
 import os
+from Crypto.PublicKey import RSA
 
 fileToSend=''
 
@@ -26,6 +27,7 @@ operation:
             else, write the message to the chat box in the GUI
 '''
 def receive():
+    generateKeys()
     while True:
         try:
             msg = client_socket.recv(BUFSIZ)#.decode("utf8")
@@ -34,6 +36,32 @@ def receive():
             clientname, message = msg.split(b" ", 1)
             #filepath=''
             
+            if b"---BEGIN PUBLIC KEY---" in message:
+                with open("otherPublicKey_" + USERNAME + ".bin", "wb") as f:
+                    k=1
+                    while True:
+                        if k==1:
+                            f.write(message)
+                            k=0
+                        else:
+                            f.close()
+                            break
+                    '''
+                    while True:
+                        data = client_socket.recv(50)
+                        if b"-----END PUBLIC KEY-----" in data:
+                            f.write(data)
+                            f.close()
+                            break
+                        else:
+                            f.write(data)
+                    '''
+
+                #print("Publickey.bin found in message, going to receivePublicKey()")
+                #print(message)
+                #receivePublicKey(message)
+                #break       
+
             if message.startswith(b"C:/"):
                 ''' parse the message to get the file extension '''
                 filepath, extension = message.split(b".")
@@ -61,6 +89,7 @@ def receive():
                             break
                         else:
                             f.write(data)
+                
              
             msg_list.insert(tkinter.END, msg)
 
@@ -68,6 +97,24 @@ def receive():
             break
 
 
+'''
+def receivePublicKey(pathReceived):
+    #filepath, extension = pathReceived.split(b".")
+    with open("otherPublicKey" + USERNAME +".bin", 'wb') as f:
+        print("Key file opened")
+        while True:
+            data = client_socket.recv(BUFSIZ)
+            if b"-----END PUBLIC KEY-----" in data:
+                print("Gets to the end public key if statement")
+                f.write(data)
+                f.close()
+                break
+            else:
+                f.write(data)
+'''     
+
+
+    
 
 '''
 send() handles sending of messages on client-->server socket
@@ -90,6 +137,9 @@ def send(event=None):  # event is passed by binders.
     if msg == "{quit}":
         client_socket.close()
         msg_frame.quit()
+
+    if encrypt_var == 1:
+        encrypt(msg)
       
     if msg.startswith('C:/'):
         path = msg
@@ -98,7 +148,7 @@ def send(event=None):  # event is passed by binders.
             client_socket.send(b"This is the start of the file")
             while True:
                 l = f.read(BUFSIZ)
-                while (l):
+                while (l):                  
                     client_socket.send(l)
                     l = f.read(BUFSIZ)
                     if not l:
@@ -109,7 +159,45 @@ def send(event=None):  # event is passed by binders.
             msg="No such file or directory"
             msg_list.insert(tkinter.END, msg)
 
+def sendPublicKey(pathToKeyFile):
+
+    ##STILL ON THIS PART, NEED TO CREATE A FUNCTION WHICH READS THE PUBLIC KEY FILE AND SEND ITS OVER
+    if pathToKeyFile.startswith(b'C:\\'):
+        path = pathToKeyFile
+        #print("Testing the path" + path)
+        try:
+            f = open(path,'rb')
+            
+            while True:
+                l = f.read(BUFSIZ)
+                #while (l):              
+                client_socket.send(l)
+                #    l = f.read(BUFSIZ)
+                if not l:
+                    f.close()
+                    break
+        except IOError:
+            msg="No such file or directory"
+            msg_list.insert(tkinter.END, msg)
     
+    generateSessionKey()
+
+def generateSessionKey():
+    serverPublicKey = RSA.import_key(open("serverPublicKey.pem").read())
+    clientPrivateKey = RSA.import_key(open("rsa_privatekey.bin").read(), passphrase=RSAPassphrase)
+    #print(clientPrivateKey.exportKey()) 
+    #print(serverPublicKey.publickey().exportKey())
+    rsa_publicencryptor = PKCS1_OAEP.new(serverPublicKey)
+    rsa_privateencrpytor = PKCS1_OAEP.new(clientPrivateKey)
+    encryptedPassA = rsa_publicencryptor.encrypt(randomPassA)
+    client_socket.send(b"***Protocol beginning now ***")
+    
+    
+
+
+def encryptButtonFunction():
+    sendPublicKey(os.path.dirname(os.path.abspath(__file__)).encode() + b"\\rsa_publickey.bin")
+
             
 def on_closing(event=None):
     """This function is to be called when the window is closed."""
@@ -132,7 +220,33 @@ def OpenFile():
     except:
         print("No file exists")
 
+def generateKeys():    
+    key = RSA.generate(2048)
+    private_key = key.exportKey(passphrase=RSAPassphrase, pkcs=8, protection="scryptAndAES128-CBC")
+    try:
+        file_out = open("rsa_privatekey.bin", "wb")
+        file_out.write(private_key)
+        file_out2 = open("rsa_publickey.bin", "wb")
+        file_out2.write(key.publickey().exportKey())
+        #client_socket.send(b"RSA Keypair generated")
+    except:
+        print("Error writing keypair to file")
 
+
+def encrypt(message):
+    data = message
+    ciphertext, tag = encryption.encrypt_and_digest(data)
+    for x in (nonce, tag, ciphertext):
+        client_socket.send(x)
+
+'''
+def sendPublicKey():
+    #Need to send public key file here
+    #open it first using OpenFile (?)
+    #then send automatically
+    #pathToPublicKey = os.path.dirname(os.path.abspath(__file__)).encode() + "\rsa_publickey.bin"
+    client_socket.send(b"C:/Users/Kevin/Desktop/OriginalWeek7Files/rsa_publickey.bin")
+'''
 
 ''' Create tkinter root which will hold the GUI frames and components '''  
 root=tkinter.Tk()
@@ -193,7 +307,7 @@ entry_field.pack(side=tkinter.LEFT, ipady=10, padx=10, fill=tkinter.X, expand=1)
 
 ''' Checkbox which turns encryption on and off. '''
 encrypt_var= tkinter.IntVar()
-encrypt_button = tkinter.Checkbutton(txt_frame, text="Encrypt", variable=encrypt_var)
+encrypt_button = tkinter.Checkbutton(txt_frame, text="Encrypt", variable=encrypt_var, onvalue=1, offvalue=0, command=encryptButtonFunction)
 encrypt_button.pack(side=tkinter.LEFT, ipady=10, ipadx=10, pady=10, padx=10)
 
 ''' Simple button to add file. Calls OpenFile() which allows user to browse
@@ -209,6 +323,7 @@ send_button.pack(side=tkinter.LEFT, ipady=10, ipadx=10, pady=10, padx=5)
 #----Now comes the sockets part----
 HOST = input('Enter host: ')
 PORT = input('Enter port: ')
+USERNAME = input('Enter username: ')
 if not PORT:
     PORT = 33000
 else:
@@ -218,6 +333,10 @@ else:
 BUFSIZ = 1024
 ''' Create a tuple of user inputted host and post '''
 ADDR = (HOST, PORT)
+
+RSAPassphrase = os.urandom(32)
+randomPassA = os.urandom(32)
+
 
 ''' Create a new socket on the specified host and port and connect '''
 client_socket = socket(AF_INET, SOCK_STREAM)

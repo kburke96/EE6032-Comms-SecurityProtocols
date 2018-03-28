@@ -7,7 +7,8 @@ Created on 15 Feb 2018
 """Server for multithreaded (asynchronous) chat application."""
 from socket import AF_INET, socket, SOCK_STREAM
 from threading import Thread
-
+import os
+from Crypto.PublicKey import RSA
 
 
 '''
@@ -56,6 +57,14 @@ def handle_client(client):
     broadcast(bytes(msg, "utf8"))
     clients[client] = name
     isFile=False
+    with open("rsa_publickey.bin", "rb") as f:
+        while True:
+            data = f.read(BUFSIZ)
+            client.send(data)
+            if not data:
+                f.close()
+                break
+
     while True:
         msg = client.recv(BUFSIZ)
         
@@ -66,6 +75,24 @@ def handle_client(client):
             #broadcast(msg, "")              #Message broadcast w/o Client Name
             isFile = False
             #break
+
+        if b"---BEGIN PUBLIC KEY" in msg:
+            #print("Testing, should create new file\n\n")
+            with open("publickey_" + name + ".bin", "wb") as f:
+                f.write(msg)
+
+        if msg.startswith(b"***Protocol beginning now ***"):
+            #print("Start of protocol reached successfully...\n")
+            try:
+                #open the client public key file here
+                clientPublicKey = RSA.import_key(open("publickey_"+name+".bin").read())
+                print(clientPublicKey.publickey().exportKey())
+                print("\nPublic Key of Client read succesfully!\n")
+            except Exception as e:
+                print("Failed to open the Client's public key file")
+                print(e)
+
+                
 
         if isFile:
             broadcast(msg, "")              #Message broadcast w/o Client Name
@@ -95,7 +122,20 @@ def broadcast(msg, prefix=""):
         sock.send(bytes(prefix, "utf8")+msg)
         
 
-        
+def generateKeys():
+    code = os.urandom(32)
+    key = RSA.generate(2048)
+    private_key = key.exportKey(passphrase=code, pkcs=8, protection="scryptAndAES128-CBC")
+    try:
+        file_out = open("rsa_privatekey.bin", "wb")
+        file_out.write(private_key)
+        file_out2 = open("rsa_publickey.bin", "wb")
+        file_out2.write(key.publickey().exportKey())
+        #client_socket.send(b"RSA Keypair generated")
+    except:
+        print("Error writing keypair to file")
+    
+
 clients = {}
 addresses = {}
 
@@ -108,6 +148,7 @@ SERVER = socket(AF_INET, SOCK_STREAM)   #Create a new server socket
 SERVER.bind(ADDR)                       #Bind the new server socket to defined host and port tuple
 
 if __name__ == "__main__":
+    generateKeys()
     SERVER.listen(5)                    #Server will accept up to 5 connections
     print("Waiting for connection...")
     ACCEPT_THREAD = Thread(target=accept_incoming_connections)
