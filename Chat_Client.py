@@ -5,14 +5,20 @@ Created on 15 Feb 2018
 '''
 
 """Script for Tkinter GUI chat client."""
+
+# -*- coding: utf-8 -*-
 from socket import AF_INET, socket, SOCK_STREAM
 from threading import Thread
 import tkinter
 import sys
 from tkinter.filedialog import askopenfilename
 from Crypto.Cipher import AES, PKCS1_OAEP
+from Crypto.Signature import pkcs1_15
+from Crypto.Hash import SHA256
+from Crypto.Random import get_random_bytes
 import os
 from Crypto.PublicKey import RSA
+import hashlib, base64
 
 fileToSend=''
 
@@ -36,8 +42,8 @@ def receive():
             clientname, message = msg.split(b" ", 1)
             #filepath=''
             
-            if b"---BEGIN PUBLIC KEY---" in message:
-                with open("otherPublicKey_" + USERNAME + ".bin", "wb") as f:
+            if b"---BEGIN PUBLIC KEY---" in msg:
+                with open("serverPublicKey.pem", "wb") as f:
                     k=1
                     while True:
                         if k==1:
@@ -46,21 +52,7 @@ def receive():
                         else:
                             f.close()
                             break
-                    '''
-                    while True:
-                        data = client_socket.recv(50)
-                        if b"-----END PUBLIC KEY-----" in data:
-                            f.write(data)
-                            f.close()
-                            break
-                        else:
-                            f.write(data)
-                    '''
-
-                #print("Publickey.bin found in message, going to receivePublicKey()")
-                #print(message)
-                #receivePublicKey(message)
-                #break       
+      
 
             if message.startswith(b"C:/"):
                 ''' parse the message to get the file extension '''
@@ -137,10 +129,10 @@ def send(event=None):  # event is passed by binders.
     if msg == "{quit}":
         client_socket.close()
         msg_frame.quit()
-
+    '''
     if encrypt_var == 1:
         encrypt(msg)
-      
+    '''   
     if msg.startswith('C:/'):
         path = msg
         try:
@@ -160,19 +152,13 @@ def send(event=None):  # event is passed by binders.
             msg_list.insert(tkinter.END, msg)
 
 def sendPublicKey(pathToKeyFile):
-
-    ##STILL ON THIS PART, NEED TO CREATE A FUNCTION WHICH READS THE PUBLIC KEY FILE AND SEND ITS OVER
     if pathToKeyFile.startswith(b'C:\\'):
         path = pathToKeyFile
-        #print("Testing the path" + path)
         try:
             f = open(path,'rb')
-            
             while True:
-                l = f.read(BUFSIZ)
-                #while (l):              
+                l = f.read(BUFSIZ)             
                 client_socket.send(l)
-                #    l = f.read(BUFSIZ)
                 if not l:
                     f.close()
                     break
@@ -184,15 +170,24 @@ def sendPublicKey(pathToKeyFile):
 
 def generateSessionKey():
     serverPublicKey = RSA.import_key(open("serverPublicKey.pem").read())
-    clientPrivateKey = RSA.import_key(open("rsa_privatekey.bin").read(), passphrase=RSAPassphrase)
-    #print(clientPrivateKey.exportKey()) 
-    #print(serverPublicKey.publickey().exportKey())
-    rsa_publicencryptor = PKCS1_OAEP.new(serverPublicKey)
-    rsa_privateencrpytor = PKCS1_OAEP.new(clientPrivateKey)
-    encryptedPassA = rsa_publicencryptor.encrypt(randomPassA)
+    clientPrivateKey = RSA.import_key(open("rsa_privatekey.der").read(), passphrase=RSAPassphrase)
+    rsa_publicencryptor = PKCS1_OAEP.new(serverPublicKey)                     #instantiate the encryption object using the receivers (servers) public key
+    #Create hash of randomPassA
+    #Sign hash with own private key
+    #Append signed hash to randomPassA and encrypt with servers public
+    #send encrypted version to server
+    hashedPassA = SHA256.new(randomPassA)                                   #create a hash of passA -> INTEGRITY
+    signedHashedPassA = pkcs1_15.new(clientPrivateKey).sign(hashedPassA)    #sign the hash with own (clients) private key -> DIGITAL SIGNATURE 
     client_socket.send(b"***Protocol beginning now ***")
-    
-    
+    appendedMessage = randomPassA + signedHashedPassA
+    try:
+        encryptedMessage = rsa_publicencryptor.encrypt(appendedMessage)
+        print("Message successfully encrypted with servers public key..\n")
+        client_socket.send(encryptedMessage)
+    except Exception as e:
+        print("Encryption with servers public key failed..")
+        print(e)
+
 
 
 def encryptButtonFunction():
@@ -224,21 +219,20 @@ def generateKeys():
     key = RSA.generate(2048)
     private_key = key.exportKey(passphrase=RSAPassphrase, pkcs=8, protection="scryptAndAES128-CBC")
     try:
-        file_out = open("rsa_privatekey.bin", "wb")
+        file_out = open("rsa_privatekey.der", "wb")
         file_out.write(private_key)
         file_out2 = open("rsa_publickey.bin", "wb")
         file_out2.write(key.publickey().exportKey())
-        #client_socket.send(b"RSA Keypair generated")
     except:
         print("Error writing keypair to file")
 
-
+'''
 def encrypt(message):
     data = message
     ciphertext, tag = encryption.encrypt_and_digest(data)
     for x in (nonce, tag, ciphertext):
         client_socket.send(x)
-
+'''
 '''
 def sendPublicKey():
     #Need to send public key file here
@@ -335,7 +329,7 @@ BUFSIZ = 1024
 ADDR = (HOST, PORT)
 
 RSAPassphrase = os.urandom(32)
-randomPassA = os.urandom(32)
+randomPassA = get_random_bytes(16)
 
 
 ''' Create a new socket on the specified host and port and connect '''

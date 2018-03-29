@@ -7,10 +7,14 @@ Created on 15 Feb 2018
 """Server for multithreaded (asynchronous) chat application."""
 from socket import AF_INET, socket, SOCK_STREAM
 from threading import Thread
-import os
 from Crypto.PublicKey import RSA
+from Crypto.Cipher import PKCS1_OAEP
+from Crypto.Signature import pkcs1_15
+from Crypto.Hash import SHA256
+from Crypto import Random
+import os
 
-
+# -*- coding: utf-8 -*-
 '''
 accept_incoming_connection() sets up handling for incoming clients
 
@@ -57,13 +61,18 @@ def handle_client(client):
     broadcast(bytes(msg, "utf8"))
     clients[client] = name
     isFile=False
-    with open("rsa_publickey.bin", "rb") as f:
-        while True:
-            data = f.read(BUFSIZ)
-            client.send(data)
-            if not data:
-                f.close()
-                break
+    isSetup=False
+    try:
+        print("Server sending its public key to client..")
+        with open("rsa_publickey.bin", "rb") as f:
+            while True:
+                data = f.read(BUFSIZ)
+                client.send(data)
+                if not data:
+                    f.close()
+                    break
+    except:
+        print("Error opening or sending the server's public key..")
 
     while True:
         msg = client.recv(BUFSIZ)
@@ -77,22 +86,26 @@ def handle_client(client):
             #break
 
         if b"---BEGIN PUBLIC KEY" in msg:
-            #print("Testing, should create new file\n\n")
+            isSetup=True
             with open("publickey_" + name + ".bin", "wb") as f:
                 f.write(msg)
+            
 
         if msg.startswith(b"***Protocol beginning now ***"):
-            #print("Start of protocol reached successfully...\n")
+            isSetup=True
             try:
                 #open the client public key file here
                 clientPublicKey = RSA.import_key(open("publickey_"+name+".bin").read())
-                print(clientPublicKey.publickey().exportKey())
-                print("\nPublic Key of Client read succesfully!\n")
             except Exception as e:
                 print("Failed to open the Client's public key file")
                 print(e)
 
-                
+            encryptedMessage = client.recv(1024)
+            #unencrypt the message
+            decryptAndVerify(encryptedMessage, name)
+        
+        if isSetup==True:
+            break
 
         if isFile:
             broadcast(msg, "")              #Message broadcast w/o Client Name
@@ -106,6 +119,83 @@ def handle_client(client):
                 break
             else:
                 break
+
+
+
+
+def sendPublicKey(pathToKeyFile, client):
+    if pathToKeyFile.startswith(b'C:\\'):
+        path = pathToKeyFile
+        try:
+            f = open(path,'rb')
+            while True:
+                l = f.read(BUFSIZ)             
+                client.send(l)
+                if not l:
+                    f.close()
+                    break
+        except IOError:
+            msg="No such file or directory"
+            msg_list.insert(tkinter.END, msg)
+
+'''
+decryptAndVerify() handles the message received from client which has been encrypted with
+server's public key.
+
+arguments:
+            encryptedMessage - this is the message received from client which has been encrypted
+                               with server's public key
+
+            name             - the name of the client being communicated with (needed in order to
+                               open public key file)
+
+operation:
+            1 - Open the server's private key and save to variable
+            2 - Instantiate a new RSA object for decrpytion with server's private key
+            3 - Decrypt the message
+            4 - Take PassA from message (first 16 bytes)
+            5 - Open Client's public key
+            6 - Hash PassA using SHA256
+            7 - Verify the Hash of PassA against the signed portion of the decrypted message
+'''
+def decryptAndVerify(encryptedMessage, name):
+    name=name
+    try:
+        serverPrivateKey = RSA.import_key(open("rsa_privatekey.der").read(), passphrase=RSAPassphrase)
+        print("Own private key read successfully")
+    except:
+        print("Error reading own private key..")
+    
+    try:
+        rsa_privatedecryptor = PKCS1_OAEP.new(serverPrivateKey)
+        print("Decryptor object created with own private Key")
+    except:
+        print("Error creating the decryptor object with own private key")
+    try:
+        decrypted = rsa_privatedecryptor.decrypt(encryptedMessage)
+        print("Data succesfully decrypted")
+        #print("Decrypted data: \n\n" + decrypted.decode())
+    except Exception as e:
+        print("Error decrypting the encrypted message")
+        print(e)
+    
+    try:
+        passA = decrypted[:16]
+    except:
+        print("Error splitting up decrypted data")
+    try:
+        signedAndHashed = decrypted[16:]
+    except:
+        print("Error getting signed and hashed part of decrypted message")
+    
+    clientPublicKey = RSA.import_key(open("publickey_"+name+".bin").read())
+    hash = SHA256.new(passA)
+    try:
+        pkcs1_15.new(clientPublicKey).verify(hash, signedAndHashed)
+        print("Data successfully verified")
+    except (ValueError, TypeError):
+        print("Error verifying data")
+
 
 
 
@@ -123,11 +213,10 @@ def broadcast(msg, prefix=""):
         
 
 def generateKeys():
-    code = os.urandom(32)
-    key = RSA.generate(2048)
-    private_key = key.exportKey(passphrase=code, pkcs=8, protection="scryptAndAES128-CBC")
+    key = RSA.generate(4096)
+    private_key = key.exportKey(passphrase=RSAPassphrase, pkcs=8, protection="scryptAndAES128-CBC")
     try:
-        file_out = open("rsa_privatekey.bin", "wb")
+        file_out = open("rsa_privatekey.der", "wb")
         file_out.write(private_key)
         file_out2 = open("rsa_publickey.bin", "wb")
         file_out2.write(key.publickey().exportKey())
@@ -143,6 +232,8 @@ HOST = ''
 PORT = 33000
 BUFSIZ = 1024
 ADDR = (HOST, PORT)                     #Create a tuple of host and port to run server on
+
+RSAPassphrase = os.urandom(32)
 
 SERVER = socket(AF_INET, SOCK_STREAM)   #Create a new server socket
 SERVER.bind(ADDR)                       #Bind the new server socket to defined host and port tuple
