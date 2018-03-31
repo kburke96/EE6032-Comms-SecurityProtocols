@@ -16,6 +16,7 @@ from Crypto.Cipher import AES, PKCS1_OAEP
 from Crypto.Signature import pkcs1_15
 from Crypto.Hash import SHA256
 from Crypto.Random import get_random_bytes
+from Crypto.Util.Padding import unpad
 import os
 from Crypto.PublicKey import RSA
 import hashlib, base64
@@ -47,6 +48,7 @@ def receive():
                     k=1
                     while True:
                         if k==1:
+                            f.write(b"-----BEGIN ")
                             f.write(message)
                             k=0
                         else:
@@ -177,9 +179,22 @@ def generateSessionKey():
     #Append signed hash to randomPassA and encrypt with servers public
     #send encrypted version to server
     hashedPassA = SHA256.new(randomPassA)                                   #create a hash of passA -> INTEGRITY
-    signedHashedPassA = pkcs1_15.new(clientPrivateKey).sign(hashedPassA)    #sign the hash with own (clients) private key -> DIGITAL SIGNATURE 
+    print("Type of hashedPassA:")
+    print(type(hashedPassA))
+    signedHashedPassA = pkcs1_15.new(clientPrivateKey).sign(hashedPassA)    #sign the hash with own (clients) private key -> DIGITAL SIGNATURE
+    print("Type of signedHashedPassA:")
+    print(type(signedHashedPassA)) 
+    print("Length of signedHashedPassA:")
+    print(len(signedHashedPassA))
+    print("signedHashedPassA value: ")
+    print(signedHashedPassA)
+    #signedHashedPassA = unpad(signedHashedPassA, block_size=3)
     client_socket.send(b"***Protocol beginning now ***")
     appendedMessage = randomPassA + signedHashedPassA
+    print("Type of appendedMessage:")
+    print(type(signedHashedPassA))
+    print("Length of appendedMessage:")
+    print(len(appendedMessage))
     try:
         encryptedMessage = rsa_publicencryptor.encrypt(appendedMessage)
         print("Message successfully encrypted with servers public key..\n")
@@ -216,8 +231,8 @@ def OpenFile():
         print("No file exists")
 
 def generateKeys():    
-    key = RSA.generate(2048)
-    private_key = key.exportKey(passphrase=RSAPassphrase, pkcs=8, protection="scryptAndAES128-CBC")
+    key = RSA.generate(1024)
+    private_key = key.exportKey(passphrase=RSAPassphrase, pkcs=1, protection="scryptAndAES128-CBC")
     try:
         file_out = open("rsa_privatekey.der", "wb")
         file_out.write(private_key)

@@ -11,6 +11,7 @@ from Crypto.PublicKey import RSA
 from Crypto.Cipher import PKCS1_OAEP
 from Crypto.Signature import pkcs1_15
 from Crypto.Hash import SHA256
+from Crypto.Random import get_random_bytes
 from Crypto import Random
 import os
 
@@ -96,16 +97,35 @@ def handle_client(client):
             try:
                 #open the client public key file here
                 clientPublicKey = RSA.import_key(open("publickey_"+name+".bin").read())
+                print("Successfully opened client public key..")
             except Exception as e:
                 print("Failed to open the Client's public key file")
                 print(e)
 
             encryptedMessage = client.recv(1024)
             #unencrypt the message
-            decryptAndVerify(encryptedMessage, name)
-        
-        if isSetup==True:
-            break
+            passA = decryptAndVerify(encryptedMessage, name)
+
+            try:
+                print("Creating a mutually generated session key..")
+                sessionKey = generateSessionKey(passA)
+            except Exception as e:
+                print("Error calling the generateSessionKey() function")
+                print(e)
+
+            '''
+            want to create the message to send back to client now, with passB in it..
+            B->A: {PassB, {PassA}Kab, {H(PassB, {PassA}Kab)}privB}pubA
+            whats needed:   -encrypt passA with sessionKey
+                            -
+            1. 
+            '''
+            encryptedMessage = generateEncryptedMessage(name, client)
+
+
+
+        #if isSetup==True:
+            #break
 
         if isFile:
             broadcast(msg, "")              #Message broadcast w/o Client Name
@@ -121,6 +141,30 @@ def handle_client(client):
                 break
 
 
+def generateEncryptedMessage(name, client):
+    clientPublicKey = RSA.import_key(open("publickey_"+name+".bin").read())
+    serverPrivateKey = RSA.import_key(open("rsa_privatekey.der").read(), passphrase=RSAPassphrase)
+    rsa_publicencryptor = PKCS1_OAEP.new(clientPublicKey)
+    print("Length of randmPassB:")
+    print(len(randomPassB))
+    hashedPassB = SHA256.new(randomPassB)
+    #print("Length of hashedPassB:")
+    #print(len(hashedPassB))
+    signedHashedPassB = pkcs1_15.new(serverPrivateKey).sign(hashedPassB)
+    #signedHashedPassB = unpad(signedHashedPassB, block_size=1) 
+    print("Length of signedHashedPassB:")
+    print(len(signedHashedPassB))
+    client.send(b"***Protocol beginning now ***")
+    appendedMessage = randomPassB + signedHashedPassB
+    print("Length of appendedMessage:")
+    print(len(appendedMessage))
+    try:
+        encryptedMessage = rsa_publicencryptor.encrypt(appendedMessage)
+        print("Message successfully encrypted with clients public key..\n")
+        client.send(encryptedMessage)
+    except Exception as e:
+        print("Encryption with clients public key failed..")
+        print(e)
 
 
 def sendPublicKey(pathToKeyFile, client):
@@ -195,8 +239,18 @@ def decryptAndVerify(encryptedMessage, name):
         print("Data successfully verified")
     except (ValueError, TypeError):
         print("Error verifying data")
+    
+    return passA
 
-
+def generateSessionKey(passA):
+    appendedKeys = passA + randomPassB
+    try:
+        sessionKey = SHA256.new(appendedKeys)
+        print("Session key Kab successfully generated")
+    except Exception as e:
+        print("Error creating hash of appendedKeys")
+        print(e)
+    return sessionKey
 
 
 '''
@@ -213,8 +267,8 @@ def broadcast(msg, prefix=""):
         
 
 def generateKeys():
-    key = RSA.generate(4096)
-    private_key = key.exportKey(passphrase=RSAPassphrase, pkcs=8, protection="scryptAndAES128-CBC")
+    key = RSA.generate(2048)
+    private_key = key.exportKey(passphrase=RSAPassphrase, pkcs=1, protection="scryptAndAES128-CBC")
     try:
         file_out = open("rsa_privatekey.der", "wb")
         file_out.write(private_key)
@@ -234,6 +288,7 @@ BUFSIZ = 1024
 ADDR = (HOST, PORT)                     #Create a tuple of host and port to run server on
 
 RSAPassphrase = os.urandom(32)
+randomPassB = get_random_bytes(16)
 
 SERVER = socket(AF_INET, SOCK_STREAM)   #Create a new server socket
 SERVER.bind(ADDR)                       #Bind the new server socket to defined host and port tuple
