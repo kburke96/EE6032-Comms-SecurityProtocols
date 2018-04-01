@@ -7,10 +7,13 @@ Created on 15 Feb 2018
 """Script for Tkinter GUI chat client."""
 from socket import AF_INET, socket, SOCK_STREAM
 from threading import Thread
-import tkinter
-import sys
 from tkinter.filedialog import askopenfilename
 from diffiehellman2 import DiffieHellman
+import tkinter
+import sys
+import nacl.utils
+import nacl.secret
+
 
 fileToSend=''
 
@@ -97,6 +100,13 @@ operation:
 def send(event=None):  # event is passed by binders.
     msg = my_msg.get()
     my_msg.set("")  # Clears input field.
+
+
+    ##This is where the message gets sent to the server for distribution
+    ##Need to encrypt the message here and use client_socket.send() to 
+    ##send the encrypted bytes to the server
+    ##Note: socket.send() function only takes bytes as a parameter
+    
     client_socket.send(bytes(msg, "utf8"))
     if msg == "{quit}":
         client_socket.close()
@@ -238,14 +248,12 @@ with open("clientPublicKey.bin", "wb") as f:
 enter = input("Press Enter to continue...")
 
 serverPublicKey = open("serverPublicKey.bin").read()
-try:
-    clientEntity.genKey(serverPublicKey)
-    print("Client generated a sesssion key successfully..")
-    sessionKey = clientEntity.getKey()
-    print(sessionKey)
-except Exception as e:
-    print("Failed to generate session key..")
-    print(e)
+clientEntity.genKey(serverPublicKey)
+print("Client generated a sesssion key successfully..")
+sessionKey = clientEntity.getKey()
+print(sessionKey)
+
+encryptor = nacl.secret.SecretBox(sessionKey)
 
 ''' Create a new socket on the specified host and port and connect '''
 client_socket = socket(AF_INET, SOCK_STREAM)
