@@ -60,7 +60,7 @@ def handle_client(client):
     sessionKey=''
     try:
         serverEntity.genKey(clientPublicKey)
-        print("Server generated a sesssion key for this client successfully..")
+        print("Server generated a session key for this client successfully..")
         sessionKey = serverEntity.getKey()
         print(sessionKey)
         #print(len(sessionKey))
@@ -91,14 +91,14 @@ def handle_client(client):
             broadcast(msg, "")              #Message broadcast w/o Client Name
         else:
             if (isFile==False) and (msg != bytes("{quit}", "utf8")):
-                broadcast(name+b": ")   #Message broadcast w/ Client Name
+                broadcast(name)   #Message broadcast w/ Client Name
                 #print("Broadcasting message for " + name)
                 print("The encrypted message is: ")
                 print(msg)
                 decryptedMessage = decryptor.decrypt(msg)
                 #print("The msg (encrypted) is:")
                 #print(msg)
-                print("The decrpyted message is:")
+                print("The decrypted message is:")
                 print(decryptedMessage)
                 broadcast(decryptedMessage)
             elif msg==bytes("{quit}", "utf8"):
@@ -120,7 +120,11 @@ arguments:
     prefix - Client Name to be prepended to msg
 '''
 def broadcast(msg, prefix=""):
-    for (sock,key) in clients:
+    iteration = 0
+    for (sock,key) in clients: 
+        iteration = iteration + 1
+        print("This is iteration number: ")
+        print(iteration)
         #print("This is the sock,key tuple:")
         #print(sock,key)
         print("Sending this message through the socket:")
@@ -130,14 +134,12 @@ def broadcast(msg, prefix=""):
         print("The unencrypted version is:")
         print(msg)
         encryptor = nacl.secret.SecretBox(key)
-        msg = encryptor.encrypt(msg)
+        encryptedMessage = encryptor.encrypt(msg)
         print("encrypted message being sent from server to client is:")
         print(msg)
         #sock.send(bytes(prefix, "utf8"))
-        sock.send(msg)
-        
-
-        
+        sock.send(encryptedMessage)
+      
 clients = []
 addresses = {}
 

@@ -28,6 +28,10 @@ operation:
             else, write the message to the chat box in the GUI
 '''
 def receive():
+    welcome = "Welcome %s , type {quit} at any time to exit" % NAME
+    msg_list.insert(tkinter.END, bytes(welcome, "utf8"))
+    insertName = "Please enter your username and press SEND"
+    msg_list.insert(tkinter.END, bytes(insertName, "utf8"))
     while True:
         try:
             msg = client_socket.recv(BUFSIZ)
@@ -97,7 +101,7 @@ def receive():
                             break
                         else:
                             f.write(data)
-             
+            
             msg_list.insert(tkinter.END, decryptedMessage)
 
         except OSError:  # Possibly client has left the chat.
@@ -265,7 +269,6 @@ NAME = input('Enter name: ')
 BUFSIZ = 1024
 ''' Create a tuple of user inputted host and post '''
 ADDR = (HOST, PORT)
-
 
 clientEntity = DiffieHellman()
 with open("clientPublicKey.bin", "wb") as f:
