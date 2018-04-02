@@ -32,8 +32,30 @@ def receive():
         try:
             msg = client_socket.recv(BUFSIZ)
             '''parse each read from buffer to split message and client name'''
-            clientname, message = msg.split(b" ", 1)
-            #filepath=''
+            try:
+                clientname, message = msg.split(b" ", 1)
+            except:
+                message = msg
+            
+            if b'Welcome' in message:
+                print("Got to if message statement..")
+                msg_list.insert(tkinter.END, message)
+                return
+            
+            if b'has joined the chat!' in message:
+                print("Got to if has joined chat statement..")
+                msg_list.insert(tkinter.END, message)
+                return
+            
+            print("Trying to decrypt..:")
+            print(msg)
+            print("Tpe of msg is:")
+            print(type(msg))
+            decryptedMessage = decryptor.decrypt(msg)
+            print("This is the decrypted message: ")
+            print(decryptedMessage)
+            print("Decrypted using session key:")
+            print(sessionKey)
 
             if b"---BEGIN PUBLIC KEY---" in msg:
                 with open("serverPublicKey.pem", "wb") as f:
@@ -76,7 +98,7 @@ def receive():
                         else:
                             f.write(data)
              
-            msg_list.insert(tkinter.END, msg)
+            msg_list.insert(tkinter.END, decryptedMessage)
 
         except OSError:  # Possibly client has left the chat.
             break
@@ -106,8 +128,12 @@ def send(event=None):  # event is passed by binders.
     ##Need to encrypt the message here and use client_socket.send() to 
     ##send the encrypted bytes to the server
     ##Note: socket.send() function only takes bytes as a parameter
-    
-    client_socket.send(bytes(msg, "utf8"))
+    print("Encrypting the plaintext: ")
+    print(msg)
+    encryptedMessage = encryptor.encrypt(bytes(msg, "utf8"))
+    print("The encrypted version is:")
+    print(encryptedMessage)
+    client_socket.send(encryptedMessage)
     if msg == "{quit}":
         client_socket.close()
         msg_frame.quit()
@@ -245,7 +271,7 @@ clientEntity = DiffieHellman()
 with open("clientPublicKey.bin", "wb") as f:
     f.write(bytes(str(clientEntity.publicKey), "utf8"))
 #print(clientEntity.publicKey)
-enter = input("Press Enter to continue...")
+#enter = input("Press Enter to continue...")
 
 serverPublicKey = open("serverPublicKey.bin").read()
 clientEntity.genKey(serverPublicKey)
@@ -254,6 +280,7 @@ sessionKey = clientEntity.getKey()
 print(sessionKey)
 
 encryptor = nacl.secret.SecretBox(sessionKey)
+decryptor = nacl.secret.SecretBox(sessionKey)
 
 ''' Create a new socket on the specified host and port and connect '''
 client_socket = socket(AF_INET, SOCK_STREAM)
