@@ -32,7 +32,11 @@ def receive():
         try:
             msg = client_socket.recv(BUFSIZ)
             '''parse each read from buffer to split message and client name'''
-            clientname, message = msg.split(b" ", 1)
+            try:
+                clientname, message = msg.split(b" ", 1)
+            except:
+                message = msg
+                
             #filepath=''
 
             if b"---BEGIN PUBLIC KEY---" in msg:
@@ -106,8 +110,8 @@ def send(event=None):  # event is passed by binders.
     ##Need to encrypt the message here and use client_socket.send() to 
     ##send the encrypted bytes to the server
     ##Note: socket.send() function only takes bytes as a parameter
-    
-    client_socket.send(bytes(msg, "utf8"))
+    encrpytedMessage = encryptor.encrypt(bytes(msg, "utf8"))
+    client_socket.send(encrpytedMessage)
     if msg == "{quit}":
         client_socket.close()
         msg_frame.quit()

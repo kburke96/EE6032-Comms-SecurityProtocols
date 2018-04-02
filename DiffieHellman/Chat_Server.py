@@ -8,6 +8,8 @@ Created on 15 Feb 2018
 from socket import AF_INET, socket, SOCK_STREAM
 from threading import Thread
 from diffiehellman2 import DiffieHellman
+import nacl.utils
+import nacl.secret
 
 
 '''
@@ -55,17 +57,18 @@ def handle_client(client):
     except Exception as e:
         print("Failed to read client public key..")
         print(e)
+    sessionKey=''
     try:
         serverEntity.genKey(clientPublicKey)
         print("Server generated a sesssion key for this client successfully..")
         sessionKey = serverEntity.getKey()
         print(sessionKey)
+        #print(len(sessionKey))
     except Exception as e:
         print("Failed to generate session key..")
         print(e)
-
-
-    name = client.recv(BUFSIZ).decode("utf8")
+    decryptor = nacl.secret.SecretBox(sessionKey) 
+    name = client.recv(BUFSIZ)#.decode("utf8")
     welcome = 'Welcome %s! If you ever want to quit, type {quit} to exit.' % name
     client.send(bytes(welcome, "utf8"))
     msg = "%s has joined the chat!" % name
@@ -88,7 +91,13 @@ def handle_client(client):
             broadcast(msg, "")              #Message broadcast w/o Client Name
         else:
             if (isFile==False) and (msg != bytes("{quit}", "utf8")):
-                broadcast(msg, name+": ")   #Message broadcast w/ Client Name
+                broadcast(name+b": ")   #Message broadcast w/ Client Name
+                decryptedMessage = decryptor.decrypt(msg)
+                #print("The msg (encrypted) is:")
+                #print(msg)
+                #print("The decrpyted message is:")
+                #print(decryptedMessage)
+                broadcast(decryptedMessage)
             elif msg==bytes("{quit}", "utf8"):
                 client.close()
                 del clients[client]
