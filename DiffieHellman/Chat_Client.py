@@ -52,12 +52,12 @@ def receive():
                 return
             
             print("Trying to decrypt..:")
-            print(msg)
-            print("Tpe of msg is:")
+            print(message)
+            print("Type of msg is:")
             print(type(msg))
-            decryptedMessage = decryptor.decrypt(msg)
+            decryptedMessage = decryptor.decrypt(message)
             print("This is the decrypted message: ")
-            print(decryptedMessage)
+            print(clientname+decryptedMessage)
             print("Decrypted using session key:")
             print(sessionKey)
 
@@ -102,7 +102,7 @@ def receive():
                         else:
                             f.write(data)
             
-            msg_list.insert(tkinter.END, decryptedMessage)
+            msg_list.insert(tkinter.END, clientname+decryptedMessage)
 
         except OSError:  # Possibly client has left the chat.
             break
