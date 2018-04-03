@@ -27,7 +27,9 @@ def accept_incoming_connections():
     while True:
         client, client_address = SERVER.accept()
         print("%s:%s has connected." % client_address)
-        #client.send(bytes("Please type your name and press enter!", "utf8"))
+
+        client.send(bytes("Please type your name and press enter!", "utf8"))
+
         addresses[client] = client_address
         Thread(target=handle_client, args=(client,)).start()
 
@@ -69,6 +71,7 @@ def handle_client(client):
         print(e)
     decryptor = nacl.secret.SecretBox(sessionKey) 
     name = client.recv(BUFSIZ)#.decode("utf8")
+
     decryptedname= decryptor.decrypt(name)
     says = " said:".encode("ascii")
     decryptednamestr= decryptedname+says
@@ -77,6 +80,7 @@ def handle_client(client):
     #msg = "%s has joined the chat!" % name
     #broadcast(bytes(msg, "utf8"))
     clients.append((client,sessionKey))
+
     isFile=False
 
     while True:
@@ -94,6 +98,7 @@ def handle_client(client):
             broadcast(msg, "")              #Message broadcast w/o Client Name
         else:
             if (isFile==False) and (msg != bytes("{quit}", "utf8")):
+
               #  broadcast(decryptednamestr)   #Message broadcast w/ Client Name
                # print("Broadcasting message for " + decryptedname.decode("utf8"))
                 print("The encrypted message is: ")

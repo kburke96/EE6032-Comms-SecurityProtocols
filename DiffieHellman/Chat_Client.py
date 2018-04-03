@@ -40,6 +40,7 @@ def receive():
                 clientname, message = msg.split(b" ", 1)
             except:
                 message = msg
+
             
             if b'Welcome' in message:
                 print("Got to if message statement..")
@@ -132,12 +133,14 @@ def send(event=None):  # event is passed by binders.
     ##Need to encrypt the message here and use client_socket.send() to 
     ##send the encrypted bytes to the server
     ##Note: socket.send() function only takes bytes as a parameter
+
     print("Encrypting the plaintext: ")
     print(msg)
     encryptedMessage = encryptor.encrypt(bytes(msg, "utf8"))
     print("The encrypted version is:")
     print(encryptedMessage)
     client_socket.send(encryptedMessage)
+
     if msg == "{quit}":
         client_socket.close()
         msg_frame.quit()
