@@ -1,7 +1,35 @@
 '''
 Created on 15 Feb 2018
   
-@author: Kevin
+EE6032 - Communications & Security Protocols
+
+Group   -   Kevin Burke     14155893
+            Paul Lynch      16123778  
+            Ciaran Carroll  13113259
+
+Chat_Client.py
+
+Usage:          >> python Chat_Client.py
+                Note: Server script must be already running
+
+Requirements:   Tested and working with Python 3.6
+                tkinter GUI library
+                NaCl cryptography library
+
+This script implements a client for the secure chat application.
+Threads are used to allow multiple clients to be run and to 
+communicate with one another via the server.
+
+The basic operation for message sending is as follow:
+    - The send() function is called when the Send button in GUI 
+      is pressed.
+    - It takes the message, encrypts it using the session key and
+      sends it via the socket to the server
+
+In order to receive messages the following occurs:
+    - The message is received via the client socket from the server
+    - It is decrypted using the session key agreed with the server
+    - The decrypted message is added to the message list on the GUI
 '''
 
 """Script for Tkinter GUI chat client."""
@@ -28,20 +56,19 @@ operation:
             else, write the message to the chat box in the GUI
 '''
 def receive():
-    welcome = "Welcome %s , type {quit} at any time to exit" % NAME
-    msg_list.insert(tkinter.END, bytes(welcome, "utf8"))
+    welcome = "Welcome %s , type {quit} at any time to exit" % NAME         #Welcome message to be sent at startup of a new client
+    msg_list.insert(tkinter.END, bytes(welcome, "utf8"))                    
     insertName = "Please enter your username and press SEND"
     msg_list.insert(tkinter.END, bytes(insertName, "utf8"))
-    while True:
+    while True:                                                             #Enter a loop in order to receive messages
         try:
-            msg = client_socket.recv(BUFSIZ)
-            '''parse each read from buffer to split message and client name'''
+            msg = client_socket.recv(BUFSIZ)                                #Save messages from socket in 1024 bytes
             try:
-                clientname, message = msg.split(b" ", 1)
+                clientname, message = msg.split(b" ", 1)                    #Parse buffer read to split client name from message
             except:
-                message = msg
-
+                message = msg                                               #If no client name exists
             
+            '''
             if b'Welcome' in message:
                 print("Got to if message statement..")
                 msg_list.insert(tkinter.END, message)
@@ -51,17 +78,22 @@ def receive():
                 print("Got to if has joined chat statement..")
                 msg_list.insert(tkinter.END, message)
                 return
-            
+            '''
+            '''
             print("Trying to decrypt..:")
             print(message)
             print("Type of msg is:")
             print(type(msg))
-            decryptedMessage = decryptor.decrypt(message)
+            '''
+            decryptedMessage = decryptor.decrypt(message)                   #Decrypt and save the message using session key
+            '''
             print("This is the decrypted message: ")
             print(clientname+decryptedMessage)
             print("Decrypted using session key:")
             print(sessionKey)
+            '''
 
+            '''
             if b"---BEGIN PUBLIC KEY---" in msg:
                 with open("serverPublicKey.pem", "wb") as f:
                     k=1
@@ -73,26 +105,22 @@ def receive():
                         else:
                             f.close()
                             break
-
-
-            if message.startswith(b"C:/"):
-                ''' parse the message to get the file extension '''
-                filepath, extension = message.split(b".")
+            '''
+            '''
+            if decryptedMessage.startswith(b"C:/"):                         #Message is a filepath, need to receive file.
+                filepath, extension = decryptedMessage.split(b".")          #parse the message to get the file extension
                 with open('received_file.' + str(extension, 'utf8'), 'wb') as f:
                     print('file opened')
                     while True:
                         data = client_socket.recv(BUFSIZ)
-                        '''
-                        need to check whether the designated start and end of file placeholders
-                        are present.
-                        If so, they need to be removed before the data is written 
-                        to the file
-                        '''
+                        decryptedData = decryptor.decrypt(data)
+            '''
+            '''
                         if b"This is the start of the file" in data:
-                            startofFile, startdata = data.split(b"This is the start of the file", 1)
+                            startofFile, startdata = decryptedData.split(b"This is the start of the file", 1)
                             f.write(startdata)
                         elif b"This is the end of the file" in data:
-                            realdata, EndOfFile = data.split(b"This is the end of the file", 1)
+                            realdata, EndOfFile = decryptedData.split(b"This is the end of the file", 1)
                             f.write(realdata)
                             f.close()
                             break
@@ -101,9 +129,9 @@ def receive():
                             print('file close()')
                             break
                         else:
-                            f.write(data)
-            
-            msg_list.insert(tkinter.END, clientname+decryptedMessage)
+                            f.write(decryptedData)
+            '''
+            msg_list.insert(tkinter.END, clientname+decryptedMessage)       #Display decrypted message on GUI
 
         except OSError:  # Possibly client has left the chat.
             break
@@ -133,14 +161,12 @@ def send(event=None):  # event is passed by binders.
     ##Need to encrypt the message here and use client_socket.send() to 
     ##send the encrypted bytes to the server
     ##Note: socket.send() function only takes bytes as a parameter
-
-    print("Encrypting the plaintext: ")
-    print(msg)
-    encryptedMessage = encryptor.encrypt(bytes(msg, "utf8"))
-    print("The encrypted version is:")
-    print(encryptedMessage)
-    client_socket.send(encryptedMessage)
-
+    #print("Encrypting the plaintext: ")
+    #print(msg)
+    
+    #print("The encrypted version is:")
+    #print(encryptedMessage)
+    
     if msg == "{quit}":
         client_socket.close()
         msg_frame.quit()
@@ -149,12 +175,15 @@ def send(event=None):  # event is passed by binders.
         path = msg
         try:
             f = open(path,'rb')
-            client_socket.send(b"This is the start of the file")
+            #startFile = encryptor.encrypt(bytes("This is the start of the file", "utf8"))
+            #client_socket.send(startFile)
             while True:
                 l = f.read(BUFSIZ)
+                #encryptedL = encryptor.encrypt(l)
                 while (l):                  
                     client_socket.send(l)
                     l = f.read(BUFSIZ)
+                    #encryptedL = encryptor.encrypt(l)
                     if not l:
                         client_socket.send(b"This is the end of the file")
                         f.close()
@@ -162,7 +191,12 @@ def send(event=None):  # event is passed by binders.
         except IOError:
             msg="No such file or directory"
             msg_list.insert(tkinter.END, msg)
-
+    else:
+        encryptedMessage = encryptor.encrypt(bytes(msg, "utf8"))
+        client_socket.send(encryptedMessage)
+        print("ecnrypted message sent (should match with servers received version):")
+        print(encryptedMessage)
+        print("\n")
     
             
 def on_closing(event=None):
@@ -179,7 +213,7 @@ def OpenFile():
                            filetypes =(("JPEG", "*.JPG"),("All Files","*.*")),
                            title = "Choose an attachment"
                            )
-    #Using try in case user types in unknown file or closes without choosing a file.
+    #Using try in case user chooses unknown file or closes without choosing a file.
     try:
         fileToSend = name
         my_msg.set(fileToSend)
@@ -217,12 +251,12 @@ txt_frame.pack(side=tkinter.BOTTOM, fill=tkinter.X, expand=1)
 txt_frame.pack(padx=10, pady=0)
 txt_frame.pack()
 
-my_msg = tkinter.StringVar()  # For the messages to be sent.
+my_msg = tkinter.StringVar()                                                # For the messages to be sent.
 my_msg.set("Type your messages here.")
 
-''' X and Y Scrollbars config for the msg_frame '''
-scrollbar = tkinter.Scrollbar(msg_frame)  # To navigate through past messages.
-scrollbar2 = tkinter.Scrollbar(msg_frame, orient=tkinter.HORIZONTAL)
+                                                                            
+scrollbar = tkinter.Scrollbar(msg_frame)                                    # X and Y Scrollbars config for the msg_frame 
+scrollbar2 = tkinter.Scrollbar(msg_frame, orient=tkinter.HORIZONTAL)        # To navigate through past messages.
 
 ''' This listbox will contain the chat history, previous messages, files
     sent etc.  '''
@@ -259,42 +293,35 @@ addButton.pack(side=tkinter.LEFT, ipady=10, ipadx=10, pady=10, padx=5)
 send_button = tkinter.Button(txt_frame, text="Send", command=send, bg='#128C7E')
 send_button.pack(side=tkinter.LEFT, ipady=10, ipadx=10, pady=10, padx=5)
   
-  
-#----Now comes the sockets part----
+
 HOST = input('Enter host: ')
 PORT = input('Enter port: ')
 if not PORT:
-    PORT = 33000
+    PORT = 33000                                            #Make default port 33000
 else:
     PORT = int(PORT)
 NAME = input('Enter name: ')
-''' Standard Buffer Size of 1024 bytes for reading '''
-BUFSIZ = 1024
-''' Create a tuple of user inputted host and post '''
-ADDR = (HOST, PORT)
+BUFSIZ = 1024                                               #Standard Buffer Size of 1024 bytes for reading
+ADDR = (HOST, PORT)                                         #Create a tuple of user inputted host and post
 
-clientEntity = DiffieHellman()
-with open("clientPublicKey.bin", "wb") as f:
+clientEntity = DiffieHellman()                              #New DiffieHellman() object for the client script
+with open("clientPublicKey.bin", "wb") as f:                #Write the clients public key to a file
     f.write(bytes(str(clientEntity.publicKey), "utf8"))
-#print(clientEntity.publicKey)
-#enter = input("Press Enter to continue...")
 
-serverPublicKey = open("serverPublicKey.bin").read()
-clientEntity.genKey(serverPublicKey)
+serverPublicKey = open("serverPublicKey.bin").read()        #Read and store the servers public key from file
+clientEntity.genKey(serverPublicKey)                        #Generate key for client using serverPublicKey
 print("Client generated a sesssion key successfully..")
-sessionKey = clientEntity.getKey()
+sessionKey = clientEntity.getKey()                          #Store session key
 print(sessionKey)
 
-encryptor = nacl.secret.SecretBox(sessionKey)
-decryptor = nacl.secret.SecretBox(sessionKey)
+encryptor = nacl.secret.SecretBox(sessionKey)               #Create instance of SecretBox for encryption
+decryptor = nacl.secret.SecretBox(sessionKey)               #Instance for decryption (Can't use same instance for both)
 
-''' Create a new socket on the specified host and port and connect '''
-client_socket = socket(AF_INET, SOCK_STREAM)
+client_socket = socket(AF_INET, SOCK_STREAM)                #Create a new socket on the specified host and port and connect
 client_socket.connect(ADDR)
 
-''' Begin a new thread for this specific client '''
-receive_thread = Thread(target=receive)
+                                                           
+receive_thread = Thread(target=receive)                     #Begin a new thread for this specific client
 receive_thread.start()
 
-''' This line starts up the tkinter GUI execution '''
-tkinter.mainloop()
+tkinter.mainloop()                                          #This line starts up the tkinter GUI execution
