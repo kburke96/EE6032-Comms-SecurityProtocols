@@ -253,11 +253,6 @@ entry_field = tkinter.Entry(txt_frame, textvariable=my_msg)
 entry_field.bind("<Return>", send)
 entry_field.pack(side=tkinter.LEFT, ipady=10, padx=10, fill=tkinter.X, expand=1)
 
-''' Checkbox which turns encryption on and off. '''
-encrypt_var=''
-encrypt_button = tkinter.Checkbutton(txt_frame, text="Encrypt", variable=encrypt_var)
-encrypt_button.pack(side=tkinter.LEFT, ipady=10, ipadx=10, pady=10, padx=10)
-
 ''' Simple button to add file. Calls OpenFile() which allows user to browse
     and select a file to send   '''
 addButton = tkinter.Button(txt_frame, text="Add File", command=OpenFile)

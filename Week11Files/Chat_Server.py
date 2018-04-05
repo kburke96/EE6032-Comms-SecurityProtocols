@@ -53,8 +53,6 @@ def accept_incoming_connections():
         addresses[client] = client_address
         Thread(target=handle_client, args=(client,)).start()
 
-
-
 '''
 handle_client() takes care of each individual client connections
 
@@ -92,8 +90,6 @@ def handle_client(client):
     decryptor = nacl.secret.SecretBox(sessionKey)       #Create an instance of SecretBox for decryption
     name = client.recv(BUFSIZ)                          #First message received is stored as name
     decryptedname= decryptor.decrypt(name)              #Decrypt using decryptor object
-    says = " said:".encode("ascii")
-    decryptednamestr= decryptedname+says
     clients.append((client,sessionKey))
     isFile=False
 
@@ -108,11 +104,9 @@ def handle_client(client):
             isFile = False
 
         if isFile:
-            broadcast(decryptedMessage, "")                          #Message broadcast w/o Client Name
+            broadcast(decryptedMessage, "")             #Message broadcast w/o Client Name
         else:
             if (isFile==False) and (msg != bytes("{quit}", "utf8")):
-                #broadcast(decryptednamestr)   #Message broadcast w/ Client Name
-                #print("Broadcasting message for " + decryptedname.decode("utf8"))
                 #print("The encrypted message is: ")
                 #print(msg)
                 #print("The msg (encrypted) is:")

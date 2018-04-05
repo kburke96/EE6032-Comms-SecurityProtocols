@@ -1,0 +1,18 @@
+**This protocol assumes that a unique session key has been established between the server and
+  each client which connects to it. This ensures data encryption on all sockets.
+
+  
+
+In order for transmitted messages to be encrypted the following protocol should be followed:
+
+1 - The client encrypts all messages that it sends to server using pyNaCl i.e encrypt(msg)
+
+2 - The server receives messages in handle_client() and decrypts them with that specific
+    clients session key i.e decrypt(msg)
+
+3 - The server then broadcasts the message to all clients. Server must ensure that the message 
+    being broadcast is encrpyted using the correct session key for each client it is broadcasting
+    to.
+
+4 - The client receives messages, decrypts them using its session key and adds the decrypted
+    message to the message list on the GUI.
